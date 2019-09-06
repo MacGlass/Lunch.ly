@@ -88,15 +88,28 @@ class Customer {
       `SELECT id, 
          first_name AS "firstName",  
          last_name AS "lastName", 
+         concat(first_name, ' ', last_name) AS "fullName",
          phone, 
          notes
        FROM customers
-       WHERE $1 LIKE first_name OR $2 LIKE last_name
+       WHERE (first_name ILIKE $1) OR (last_name ILIKE $1) OR (concat(first_name, ' ', last_name) ILIKE $1)
        ORDER BY last_name, first_name`,
-       [searchResults, searchResults]
+       [`%${searchResults}%`]
     );
     return results.rows.map(c => new Customer(c));
   }
+
+  static async getTopCustomers() {
+    const results = await db.query(
+      `SELECT c.first_name, c.last_name, COUNT(r.customer_id) AS total_reservations FROM 
+      customers c JOIN reservations r ON 
+      c.id=r.customer_id
+      GROUP BY c.first_name, c.last_name
+      ORDER BY COUNT(r.customer_id) DESC LIMIT 10;`
+    );
+    return results.rows;
+  }
+
 
 }
 
